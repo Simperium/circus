@@ -1,0 +1,9 @@
+mkdir -p ~/tmp
+cd ~/tmp
+wget http://download.zeromq.org/zeromq-3.2.0-rc1.tar.gz
+gunzip -c zeromq-3.2.0-rc1.tar.gz | tar xvf -
+cd zeromq-3.2.0
+./configure
+make
+sudo make install
+sudo pip install --install-option="--zmq=/usr/local" -U pyzmq
