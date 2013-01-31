@@ -3,7 +3,7 @@
 import importlib
 
 import gevent.monkey
-gevent.monkey.patch_all()
+gevent.monkey.patch_all(subprocess=True)
 
 from circus import g
 from circus import optfunc

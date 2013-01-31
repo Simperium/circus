@@ -6,6 +6,7 @@ import signal
 import prctl
 import shlex
 import multiprocessing
+import subprocess
 
 
 try:
@@ -192,12 +193,12 @@ class Metrics(object):
 
 class Execv(object):
     """
-    launches a managed subprocess
+    launches a managed subprocess via the multiprocessing model
     """
     def __init__(self, command, health_check=None):
         self.stopped = gevent.event.Event()
         self.health_check = \
-            health_check or getattr(self, 'health_check', lambda x: True)
+            health_check or getattr(self, 'health_check', lambda: True)
         self.p = multiprocessing.Process(target=self.launch, args=(command,))
         self.p.start()
         self.g = gevent.Greenlet.spawn(self.main)
@@ -206,7 +207,7 @@ class Execv(object):
         # multiprocessing.join blocks in c, so we can't use that
         # 'fraid we need to poll
         while True:
-            gevent.sleep(3)
+            gevent.sleep(1)
             if not self.p.is_alive():
                 break
             if not self.health_check():
@@ -227,6 +228,62 @@ class Execv(object):
         def shutdown():
             self.p.terminate() # sends a SIGTERM
             self.wait()
+            self.stopped.set()
+        if not self.stopped.is_set():
+            gevent.spawn(shutdown)
+        return self.stopped
+
+
+class ExecvPiped(object):
+    """
+    launches a managed subprocess, and exposes the subprocesses stdin and
+    stdout
+    """
+    def __init__(self, command, health_check=None):
+        self.stopped = gevent.event.Event()
+        self.health_check = \
+            health_check or getattr(self, 'health_check', lambda: True)
+
+        args = shlex.split(command)
+        self.p = subprocess.Popen(
+            args,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            preexec_fn=self.bind)
+
+        self.g = gevent.Greenlet.spawn(self.main)
+
+    def write(self, message):
+        self.p.stdin.write(message)
+        self.p.stdin.flush()
+
+    def read(self, size):
+        return self.p.stdout.read(size)
+
+    @staticmethod
+    def bind():
+        # terminate the child process when the parent dies
+        prctl.prctl(prctl.PDEATHSIG, signal.SIGTERM)
+
+    def main(self):
+        while True:
+            gevent.sleep(3)
+            if self.p.poll() != None:
+                break
+            if not self.health_check():
+                break
+        self.stopped.set()
+
+    def wait(self):
+        self.g.join()
+
+    def stop(self):
+        def shutdown():
+            try:
+                self.p.terminate() # sends a SIGTERM
+                self.wait()
+            except OSError:
+                pass
             self.stopped.set()
         if not self.stopped.is_set():
             gevent.spawn(shutdown)
