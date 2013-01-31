@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+
+import importlib
+
+import gevent.monkey
+gevent.monkey.patch_all()
+
+from circus import g
+from circus import optfunc
+
+
+def main(name, debug=False):
+    import logging
+    if debug:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.INFO)
+    module = importlib.import_module(name.replace('-', '_'))
+    service = module.Service()
+    g.Serve(service).start().wait()
+
+
+optfunc.main(main)
