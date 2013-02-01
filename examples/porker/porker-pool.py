@@ -7,19 +7,16 @@ import gevent
 from circus import g
 
 
-class Porker(g.ExecvPiped):
-    def __init__(self):
-        command = os.path.dirname(__file__) + '/porker'
-        super(Porker, self).__init__(command)
-
-
-
 class Service(object):
-    name = 'foo'
+    name = 'porker-pool'
 
     def setup(self):
         self.router = g.Router(6060, api=self.handle)
+
+        command = os.path.dirname(__file__) + '/porker'
+        Porker = functools.partial(g.ExecvPiped, command)
         self.pool = g.ResourcePool(Porker, minsize=5, maxsize=10)
+
         self.children = [self.router, self.pool]
 
     def handle(self, message):
