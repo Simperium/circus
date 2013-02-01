@@ -11,12 +11,7 @@ class Porker(g.ExecvPiped):
     def __init__(self):
         command = os.path.dirname(__file__) + '/porker'
         super(Porker, self).__init__(command)
-        gevent.spawn(self.prepare)
 
-    def prepare(self):
-        ready = self.read(5)
-        assert ready == "READY"
-        print "READY", self.p.pid
 
 
 class Service(object):

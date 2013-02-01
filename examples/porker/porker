@@ -16,9 +16,6 @@ signal.signal(signal.SIGTERM, stop)
 
 time.sleep(3)
 
-sys.stdout.write("READY")
-sys.stdout.flush()
-
 
 while True:
     length, = struct.unpack('L', sys.stdin.read(4))
