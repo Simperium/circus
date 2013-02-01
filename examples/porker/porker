@@ -19,20 +19,10 @@ time.sleep(3)
 sys.stdout.write("READY")
 sys.stdout.flush()
 
-newline = True
 
 while True:
-    if newline:
-        sys.stdout.write('%s: ' % os.getpid())
-        newline = False
-
-    c = sys.stdin.read(1)
-
-    if c == '':
-        break
-
-    if c == '\n':
-        newline = True
-
-    sys.stdout.write(c)
+    length, = struct.unpack('L', sys.stdin.read(4))
+    message = sys.stdin.read(length)
+    message = message*3
+    sys.stdout.write(struct.pack('L', len(message))+message)
     sys.stdout.flush()

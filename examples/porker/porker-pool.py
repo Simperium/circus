@@ -1,4 +1,5 @@
 import os
+import struct
 import functools
 
 import gevent
@@ -28,6 +29,8 @@ class Service(object):
 
     def handle(self, message):
         porker = self.pool.get()
-        porker.write(message)
-        while True:
-            print porker.read(1)
+        porker.write(struct.pack('L', len(message))+message)
+        length, = struct.unpack('L', porker.read(4))
+        message = porker.read(length)
+        self.pool.put(porker)
+        return message
