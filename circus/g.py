@@ -5,6 +5,7 @@ import logging
 import signal
 import prctl
 import shlex
+import functools
 import multiprocessing
 import subprocess
 
@@ -92,9 +93,28 @@ class Serve(object):
 ###############################################################################
 
 class ResourcePool(object):
+    """
+        factory:
+            a method which produces an individual resource.
+
+        minsize:
+            minimum size for the resource pools. this will cause a minimum
+            number of items to be preallocated in the pool.
+
+        maxsize:
+            maximum number of items to be allocated. if this is reached,
+            pool.get will block until a resource is freed with pool.put
+
+    if the resource item has a stopped attribute, it's assumed to be an
+    gevent.event.Event(). the resource pool will handle removing the item from
+    the pool if the resource's stopped becomes set. if a stopped resource
+    causes the number of allocated resources to drop below minsize, new
+    resources will be preallocated.
+    """
     def __init__(self, factory, name='pool', minsize=None, maxsize=None):
         if not isinstance(maxsize, (int, long)):
             raise TypeError('Expected integer, got %r' % (maxsize, ))
+
         self.factory = factory
         self.name = name
         self.minsize = minsize
@@ -106,15 +126,34 @@ class ResourcePool(object):
 
         self.metrics = Metrics(name=name, status=self.metric_status)
 
-        if minsize:
-            items = [self.get() for x in xrange(minsize)]
-            for item in items: self.put(item)
+        self.preallocate()
+
+    def preallocate(self):
+        if self.minsize:
+            print self.minsize - self.created
+            items = [self.get() for x in xrange(self.minsize-self.created)]
+            for item in items:
+                self.put(item)
 
     def metric_status(self):
         self.metrics.set('free', self.free())
 
     def free(self):
         return (self.maxsize - self.created) + self.available.qsize()
+
+    def handle_stopped_resource(self, item, *a, **kw):
+        if item in self.available.queue:
+            logger.debug('resource stopped: %s' % item)
+            self.available.queue.remove(item)
+
+        else:
+            logger.warning('inuse resource stopped: %s' % item)
+            # TODO: item died while in use, cleanly handle, and signal to our
+            # client somehow they need to retry
+            self.unavailable.remove(item)
+
+        self.created -= 1
+        self.preallocate()
 
     def get(self):
         if self.stopped:
@@ -125,9 +164,13 @@ class ResourcePool(object):
             self.created += 1
             try:
                 item = self.factory()
+                if hasattr(item, 'stopped'):
+                    item.stopped.rawlink(
+                        functools.partial(self.handle_stopped_resource, item))
             except:
                 self.created -= 1
                 raise
+        logger.debug('resource allocated: %s' % item)
         self.metrics.incr('get')
         self.unavailable.add(item)
         return item
