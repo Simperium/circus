@@ -126,14 +126,26 @@ class ResourcePool(object):
 
         self.metrics = Metrics(name=name, status=self.metric_status)
 
-        self.preallocate()
+        gevent.spawn(self.preallocate)
+
+    def allocate(self):
+        self.created += 1
+        try:
+            item = self.factory()
+            if hasattr(item, 'stopped'):
+                item.stopped.rawlink(
+                    functools.partial(self.handle_stopped_resource, item))
+        except:
+            self.created -= 1
+            raise
+        logger.debug('resource allocated: %s' % item)
+        self.metrics.incr('allocate')
+        return item
 
     def preallocate(self):
         if self.minsize:
-            print self.minsize - self.created
-            items = [self.get() for x in xrange(self.minsize-self.created)]
-            for item in items:
-                self.put(item)
+            for i in xrange(self.minsize - self.created):
+                self.available.put(self.allocate())
 
     def metric_status(self):
         self.metrics.set('free', self.free())
@@ -153,7 +165,7 @@ class ResourcePool(object):
             self.unavailable.remove(item)
 
         self.created -= 1
-        self.preallocate()
+        gevent.spawn(self.preallocate)
 
     def get(self):
         if self.stopped:
@@ -161,16 +173,7 @@ class ResourcePool(object):
         if self.created >= self.maxsize or self.available.qsize():
             item = self.available.get()
         else:
-            self.created += 1
-            try:
-                item = self.factory()
-                if hasattr(item, 'stopped'):
-                    item.stopped.rawlink(
-                        functools.partial(self.handle_stopped_resource, item))
-            except:
-                self.created -= 1
-                raise
-        logger.debug('resource allocated: %s' % item)
+            item = self.allocate()
         self.metrics.incr('get')
         self.unavailable.add(item)
         return item
