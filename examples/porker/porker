@@ -1,0 +1,38 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import time
+import signal
+import struct
+import random
+
+
+def stop(*a, **kw):
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, stop)
+signal.signal(signal.SIGTERM, stop)
+
+time.sleep(3)
+
+sys.stdout.write("READY")
+sys.stdout.flush()
+
+newline = True
+
+while True:
+    if newline:
+        sys.stdout.write('%s: ' % os.getpid())
+        newline = False
+
+    c = sys.stdin.read(1)
+
+    if c == '':
+        break
+
+    if c == '\n':
+        newline = True
+
+    sys.stdout.write(c)
+    sys.stdout.flush()
