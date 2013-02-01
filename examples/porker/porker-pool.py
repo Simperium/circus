@@ -24,8 +24,12 @@ class Service(object):
 
     def handle(self, message):
         porker = self.pool.get()
-        porker.write(struct.pack('L', len(message))+message)
-        length, = struct.unpack('L', porker.read(4))
-        message = porker.read(length)
-        self.pool.put(porker)
-        return message
+        try:
+            porker.write(struct.pack('L', len(message))+message)
+            length, = struct.unpack('L', porker.read(4))
+            if not length:
+                return ''
+            message = porker.read(length)
+            return message
+        finally:
+            self.pool.put(porker)
