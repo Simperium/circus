@@ -258,11 +258,13 @@ class Execv(object):
     def main(self):
         # multiprocessing.join blocks in c, so we can't use that
         # 'fraid we need to poll
+        n = 0
         while True:
+            n+=1
             gevent.sleep(1)
             if not self.p.is_alive():
                 break
-            if not self.health_check():
+            if not n % 5 and not self.health_check():
                 break
         self.stopped.set()
 
