@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import os
+import sys
 import importlib
 
 import gevent.monkey
@@ -15,7 +17,16 @@ def main(name, debug=False):
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.INFO)
-    module = importlib.import_module(name.replace('-', '_'))
+
+    if name.endswith('.py'):
+        path = os.path.dirname(name)
+        sys.path.insert(0, path)
+        module, ext = os.path.splitext(os.path.basename(name))
+        module = importlib.import_module(module)
+
+    else:
+        module = importlib.import_module(name.replace('-', '_'))
+
     service = module.Service()
     g.Serve(service).start().wait()
 
