@@ -92,17 +92,23 @@ class Serve(object):
 ###############################################################################
 
 class ResourcePool(object):
-    def __init__(self, factory, name='pool', maxsize=None, **kw):
+    def __init__(self, factory, name='pool', minsize=None, maxsize=None):
         if not isinstance(maxsize, (int, long)):
             raise TypeError('Expected integer, got %r' % (maxsize, ))
         self.factory = factory
         self.name = name
+        self.minsize = minsize
         self.maxsize = maxsize
         self.available = gevent.queue.Queue()
         self.unavailable = set()
         self.created = 0
         self.stopped = False
+
         self.metrics = Metrics(name=name, status=self.metric_status)
+
+        if minsize:
+            items = [self.get() for x in xrange(minsize)]
+            for item in items: self.put(item)
 
     def metric_status(self):
         self.metrics.set('free', self.free())
