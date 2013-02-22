@@ -347,7 +347,7 @@ class ExecvPiped(object):
 # ZMQ
 ###############################################################################
 
-if zmq.zmq_version() != '3.2.0':
+if not zmq.zmq_version().startswith('3.2'):
     raise Exception(
         'zmq version out of sync, aborting to not annihilate all services')
 
