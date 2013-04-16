@@ -23,7 +23,10 @@ import gevent.pool
 import gevent.event
 
 
-from zmq.core.error import ZMQError
+try:
+    from zmq.error import ZMQError
+except ImportError:
+    from zmq.core.error import ZMQError
 import zmq.green as zmq
 
 
@@ -347,9 +350,9 @@ class ExecvPiped(object):
 # ZMQ
 ###############################################################################
 
-if not zmq.zmq_version().startswith('3.2'):
-    raise Exception(
-        'zmq version out of sync, aborting to not annihilate all services')
+#if not zmq.zmq_version().startswith('3.2'):
+#    raise Exception(
+#        'zmq version out of sync, aborting to not annihilate all services')
 
 
 BOTH=3
