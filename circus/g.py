@@ -135,7 +135,7 @@ class ResourcePool(object):
         self.created += 1
         try:
             item = self.factory()
-            if hasattr(item, 'stopped'):
+            if 'stopped' in dir(item):
                 item.stopped.rawlink(
                     functools.partial(self.handle_stopped_resource, item))
         except:
