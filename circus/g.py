@@ -560,7 +560,7 @@ class Dealer(Base):
             ret = gevent.with_timeout(self.timeout, event.get)
         except gevent.timeout.Timeout, e:
             self._calls.pop(_id)
-            raise TimeoutException()
+            raise TimeoutException( message )
         return ret
 
     def stop(self, *a, **kw):
