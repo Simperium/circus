@@ -1,0 +1,27 @@
+#!/bin/bash
+
+kill_child_processes() {
+    isTopmost=$1
+    curPid=$2
+    childPids=`ps -o pid --no-headers --ppid ${curPid}`
+    for childPid in $childPids
+    do
+        kill_child_processes 0 $childPid
+        wait $childPid 2>/dev/null
+    done
+    if [ $isTopmost -eq 0 ]; then
+        kill -15 $curPid 2> /dev/null
+        wait $curPid 2>/dev/null
+    fi
+}
+
+trap "kill_child_processes 1 $$; exit 0" SIGTERM
+
+#echo "managing $2 from PID $$"
+while [ 1 ]; do 
+#	echo "Executing $@"
+	$@ &
+	PID=$!
+#	echo "Launched $@ with PID $PID"
+	wait $PID
+done
