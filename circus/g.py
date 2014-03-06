@@ -9,7 +9,6 @@ import functools
 import multiprocessing
 import subprocess
 
-
 try:
     from collections import OrderedDict
 except ImportError:
@@ -368,6 +367,7 @@ class Base(object):
             pool=None,
             name='',
             **kw):
+        self.stop_recv = False
         self.stopped = False
 
         socket_type = self.__zmq_socket_type__
@@ -420,9 +420,14 @@ class Base(object):
     def main(self):
         while True:
             self._recv()
+            if self.stop_recv is not False:
+                self.stop_recv.set()
+                return
 
     def stop(self, *a, **kw):
         self.debug('stopping')
+        self.stop_recv = gevent.event.Event()
+        self.stop_recv.wait()
         self.stopped = gevent.event.Event()
         def shutdown():
             self.g.kill()
@@ -431,8 +436,8 @@ class Base(object):
                     self._recv(zmq.NOBLOCK)
                 except ZMQError:
                     break
-            self.socket.close()
             self.pool.join()
+            self.socket.close()
             self.debug('stopped.')
             self.stopped.set()
         gevent.spawn(shutdown)
