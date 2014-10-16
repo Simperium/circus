@@ -3,7 +3,7 @@ import uuid
 import time
 import logging
 import signal
-import prctl
+#import prctl
 import shlex
 import functools
 import multiprocessing
@@ -274,7 +274,7 @@ class Execv(object):
     @staticmethod
     def launch(command):
         # terminate the child process when the parent dies
-        prctl.prctl(prctl.PDEATHSIG, signal.SIGTERM)
+#        prctl.prctl(prctl.PDEATHSIG, signal.SIGTERM)
         args = shlex.split(command)
         os.execv(args[0], args)
 
@@ -320,7 +320,8 @@ class ExecvPiped(object):
     @staticmethod
     def bind():
         # terminate the child process when the parent dies
-        prctl.prctl(prctl.PDEATHSIG, signal.SIGTERM)
+#        prctl.prctl(prctl.PDEATHSIG, signal.SIGTERM)
+        pass
 
     def main(self):
         while True:
@@ -403,7 +404,7 @@ class Base(object):
             self.g = gevent.Greenlet.spawn(self.main)
 
     def _send(self, message):
-        self.debug("send:", message)
+#        self.debug("send:", message)
         if self.multipart:
             self.socket.send_multipart(message)
         else:
@@ -414,7 +415,7 @@ class Base(object):
             message = self.socket.recv_multipart(flags)
         else:
             message = self.socket.recv(flags)
-        self.debug("recv:", message)
+#        self.debug("recv:", message)
         self.pool.spawn(self.handle, message)
 
     def main(self):
@@ -533,9 +534,10 @@ class Dealer(Base):
     __zmq_direction__ = BOTH
     __zmq_multipart__ = True
 
-    def init(self, timeout=2):
+    def init(self, timeout=2, timeout_handler=None):
         self._calls = {}
         self.timeout = timeout
+        self.timeout_handler = timeout_handler
 
     def handle(self, message):
         _id, response = message
@@ -560,7 +562,13 @@ class Dealer(Base):
             ret = gevent.with_timeout(self.timeout, event.get)
         except gevent.timeout.Timeout, e:
             self._calls.pop(_id)
-            raise TimeoutException( message )
+            if self.timeout_handler:
+                try:
+                    self.timeout_handler(message)
+                except:
+                    pass
+            else:
+                raise TimeoutException( message )
         return ret
 
     def stop(self, *a, **kw):
