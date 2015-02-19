@@ -3,7 +3,7 @@ import uuid
 import time
 import logging
 import signal
-#import prctl
+import prctl
 import shlex
 import functools
 import multiprocessing
@@ -274,7 +274,7 @@ class Execv(object):
     @staticmethod
     def launch(command):
         # terminate the child process when the parent dies
-#        prctl.prctl(prctl.PDEATHSIG, signal.SIGTERM)
+        prctl.prctl(prctl.PDEATHSIG, signal.SIGTERM)
         args = shlex.split(command)
         os.execv(args[0], args)
 
@@ -320,7 +320,7 @@ class ExecvPiped(object):
     @staticmethod
     def bind():
         # terminate the child process when the parent dies
-#        prctl.prctl(prctl.PDEATHSIG, signal.SIGTERM)
+        prctl.prctl(prctl.PDEATHSIG, signal.SIGTERM)
         pass
 
     def main(self):
