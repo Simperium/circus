@@ -3,11 +3,15 @@ import uuid
 import time
 import logging
 import signal
-import prctl
 import shlex
 import functools
 import multiprocessing
 import subprocess
+
+try:
+    import prctl
+except ImportError:
+    print "no prctl, child processes may not get cleaned up properly"
 
 
 try:
@@ -274,7 +278,10 @@ class Execv(object):
     @staticmethod
     def launch(command):
         # terminate the child process when the parent dies
-        prctl.prctl(prctl.PDEATHSIG, signal.SIGTERM)
+        try:
+            prctl.prctl(prctl.PDEATHSIG, signal.SIGTERM)
+        except:
+            pass
         args = shlex.split(command)
         os.execv(args[0], args)
 
@@ -320,8 +327,10 @@ class ExecvPiped(object):
     @staticmethod
     def bind():
         # terminate the child process when the parent dies
-        prctl.prctl(prctl.PDEATHSIG, signal.SIGTERM)
-        pass
+        try:
+            prctl.prctl(prctl.PDEATHSIG, signal.SIGTERM)
+        except:
+            pass
 
     def main(self):
         while True:
