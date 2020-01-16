@@ -1,3 +1,4 @@
+from __future__ import print_function
 import os
 import uuid
 import time
@@ -11,7 +12,7 @@ import subprocess
 try:
     import prctl
 except ImportError:
-    print "no prctl, child processes may not get cleaned up properly"
+    print("no prctl, child processes may not get cleaned up properly")
 
 
 try:
@@ -564,12 +565,12 @@ class Dealer(Base):
         self._send([_id, message])
         try:
            self._recv(zmq.NOBLOCK)
-        except ZMQError, e:
+        except ZMQError as e:
             if e.errno == zmq.EAGAIN: pass
             else: raise
         try:
             ret = gevent.with_timeout(self.timeout, event.get)
-        except gevent.timeout.Timeout, e:
+        except gevent.timeout.Timeout as e:
             self._calls.pop(_id)
             if self.timeout_handler:
                 try:
